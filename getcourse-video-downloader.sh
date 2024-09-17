@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Simple script to download videos from GetCourse.ru
 # on Linux/*BSD
-# Dependencies: bash, coreutils, curl, grep
+# Dependencies: bash, coreutils, curl, grep, parallel
 
 set -eu
 set +f
@@ -69,13 +69,24 @@ else
 	curl -L --output "$second_playlist" "$tail"
 fi
 
-c=0
-while read -r line
-do
-	if ! [[ "$line" =~ ^http ]]; then continue; fi
-	curl --retry 12 -L --output "${tmpdir}/$(printf '%05d' "$c").ts" "$line"
-	c=$((++c))
-done < "$second_playlist"
+export tmpdir
+PP="${PP:-1}"
+
+if [ "$PP" -gt 1 ]
+then
+	# Скачиваем сегменты параллельно в $PP потоков
+	cat "$second_playlist" | grep '^http' | parallel -j "6" --no-notice \
+		'curl --retry 12 -L --output "${TMPDIR}/$(printf "%05d" {#}).ts" {}'
+else
+	# Скачиваем сегменты в один поток
+	c=0
+	while read -r line
+	do
+		if ! [[ "$line" =~ ^http ]]; then continue; fi
+		curl --retry 12 -L --output "${TMPDIR}/$(printf '%05d' "$c").ts" "$line"
+		c=$((++c))
+	done < "$second_playlist"
+fi
 
 cat "$tmpdir"/*.ts > "$result_file"
 echo "Скачивание завершено. Результат здесь:
