@@ -6,21 +6,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A bash utility to download HLS video streams from GetCourse.ru without re-encoding. It fetches `.m3u8` playlists, downloads `.ts` segments, and concatenates them into a single output file.
 
-## Scripts
+## Implementations
 
-| Script | Description | Extra Dependencies |
-|---|---|---|
-| `getcourse-video-downloader.sh` | Sequential download | none |
-| `getcourse-video-speed.sh` | Parallel download with progress bar | `parallel`, `pv` |
+| File | Language | Description | Extra Dependencies |
+|---|---|---|---|
+| `getcourse-video-downloader.sh` | Bash | Sequential download | none |
+| `getcourse-video-speed.sh` | Bash | Parallel download with progress bar | `parallel`, `pv` |
+| `getcourse-video-downloader.go` | Go | Parallel download (no extra deps) | Go ≥ 1.16 |
 
-**Run:**
+**Run bash scripts:**
 ```bash
 bash getcourse-video-downloader.sh "PLAYLIST_URL" output.ts
 bash getcourse-video-speed.sh "PLAYLIST_URL" output.ts
 PP=8 bash getcourse-video-speed.sh "PLAYLIST_URL" output.ts  # custom parallelism
 ```
 
-**Required deps:** `bash`, `curl`, `grep`, `coreutils`
+**Required deps for bash:** `bash`, `curl`, `grep`, `coreutils`
+
+**Run Go implementation:**
+```bash
+go run getcourse-video-downloader.go "PLAYLIST_URL" output.ts
+PP=8 go run getcourse-video-downloader.go "PLAYLIST_URL" output.ts  # custom parallelism
+
+# Or build a binary first:
+go build -o getcourse-video-downloader getcourse-video-downloader.go
+./getcourse-video-downloader "PLAYLIST_URL" output.ts
+```
+
+**No `go.mod`** — single-file program, uses only stdlib, `go run` works directly.
 
 ## Architecture
 
