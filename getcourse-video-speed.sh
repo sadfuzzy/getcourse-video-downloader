@@ -7,10 +7,10 @@ set -eu
 set +f
 set -o pipefail
 
-if [ ! -f "$0" ]; then
-    a0="$0"
-else
+if [ -f "$0" ]; then
     a0="bash $0"
+else
+    a0="$0"
 fi
 
 _echo_help() {
@@ -51,7 +51,7 @@ touch "$result_file"
 PP=${PP:-4}
 
 main_playlist="$(mktemp)"
-curl -L --output "$main_playlist" "$URL"
+curl -fL --output "$main_playlist" "$URL"
 second_playlist="$(mktemp)"
 
 # Check for direct video segment URLs
@@ -67,21 +67,25 @@ else
         echo "https://github.com/mikhailnov/getcourse-video-downloader/issues (на русском)."
         exit 1
     fi
-    curl -L --output "$second_playlist" "$tail"
+    curl -fL --output "$second_playlist" "$tail"
 fi
 
 # Export variables for use in parallel
 export tmpdir
 
 # Download segments in parallel using GNU parallel
-total_segments=$(grep -c '^http' "$second_playlist")
-current_segment=0
+total_segments=$(grep -c '^http' "$second_playlist" || true)
+if [ "$total_segments" -eq 0 ]; then
+    echo "Ошибка: сегменты не найдены в плейлисте."
+    exit 1
+fi
 
 echo "Скачиваю $total_segments сегментов..."
-cat "$second_playlist" | grep '^http' | parallel --bar -j "6" --no-notice \
+grep '^http' "$second_playlist" | parallel --bar --will-cite -j "$PP" \
     'curl -s --retry 12 -L --output "${TMPDIR}/$(printf "%05d" {#}).ts" {}'
 
 echo "Соединяю сегменты..."
-cat "$tmpdir"/*.ts | pv -s $(du -cb "$tmpdir"/*.ts | tail -n1 | cut -f1) > "$result_file"
+total_size=$(wc -c "$tmpdir"/*.ts | tail -1 | awk '{print $1}')
+cat "$tmpdir"/*.ts | pv -s "$total_size" > "$result_file"
 echo "Скачивание завершено. Результат:
 $result_file"
