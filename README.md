@@ -6,7 +6,13 @@
 
 Этот скрипт скачивает видео-уроки с Геткурса без перекодирования. Работает на Linux, BSD, macOS и в др. UNIX-подобных окружениях.
 
-Для работы необходимы `bash` и `curl`.
+## Реализации
+
+| Файл | Язык | Описание | Зависимости |
+|---|---|---|---|
+| `getcourse-video-downloader.sh` | Bash | Последовательное скачивание | `bash`, `curl`, `grep`, `coreutils` |
+| `getcourse-video-speed.sh` | Bash | Параллельное скачивание с прогресс-баром | + `parallel`, `pv` |
+| `getcourse-video-downloader.go` | Go | Параллельное скачивание, без доп. зависимостей | Go ≥ 1.16 |
 
 ## Как достать ссылку на видео
 
@@ -40,24 +46,55 @@ GetCourse иногда меняет алгоритмы, ниже описано 
 ![title](data/2022-01-03_20-02.png)
 ![title](data/2022-01-03_20-03.png)
 
-## Запуск скрипта
+## Запуск
 
-Откройте терминал и выполните команду скачивания этого скрипта:
+### Bash (последовательное скачивание)
 
-`curl -L --output /tmp/getcourse-video-downloader.sh https://github.com/mikhailnov/getcourse-video-downloader/raw/master/getcourse-video-downloader.sh`
+```bash
+curl -L --output /tmp/getcourse-video-downloader.sh \
+  https://github.com/mikhailnov/getcourse-video-downloader/raw/master/getcourse-video-downloader.sh
 
-Затем запустите скрипт:
-
-`bash /tmp/getcourse-video-downloader.sh "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"`
-
-Первым аргументом идет ссылка, вторым — имя файла, куда сохранить скачанное, рекомендуемое расширение — ts.
-
-На ROSA Linux можно установить этот скрипт из репозитория:
-
+bash /tmp/getcourse-video-downloader.sh "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
 ```
-sudo dnf install getcourse-video-downloader`
+
+### Bash (параллельное скачивание с прогресс-баром)
+
+Требует `parallel` и `pv` (`sudo apt install parallel pv` / `brew install parallel pv`).
+
+```bash
+curl -L --output /tmp/getcourse-video-speed.sh \
+  https://github.com/mikhailnov/getcourse-video-downloader/raw/master/getcourse-video-speed.sh
+
+bash /tmp/getcourse-video-speed.sh "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
+
+# Количество потоков (по умолчанию 4):
+PP=8 bash /tmp/getcourse-video-speed.sh "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
+```
+
+### Go
+
+Требует установленного [Go](https://go.dev/dl/) версии 1.16 или выше.
+
+```bash
+# Запустить напрямую:
+go run getcourse-video-downloader.go "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
+
+# Или собрать бинарный файл:
+make build
+./getcourse-video-downloader "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
+
+# Количество потоков (по умолчанию 4):
+PP=8 ./getcourse-video-downloader "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
+```
+
+### ROSA Linux
+
+```bash
+sudo dnf install getcourse-video-downloader
 getcourse-video-downloader "ДЛИННАЯ_ССЫЛКА" "Имя файла.ts"
 ```
+
+Первым аргументом идет ссылка, вторым — имя файла, куда сохранить скачанное, рекомендуемое расширение — ts.
 
 ## Другие реализации
 * [GetCoursePythonDownloader](https://github.com/snhplayer/GetCoursePythonDownloader)

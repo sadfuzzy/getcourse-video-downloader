@@ -29,7 +29,7 @@ go run getcourse-video-downloader.go "PLAYLIST_URL" output.ts
 PP=8 go run getcourse-video-downloader.go "PLAYLIST_URL" output.ts  # custom parallelism
 
 # Or build a binary first:
-go build -o getcourse-video-downloader getcourse-video-downloader.go
+make build
 ./getcourse-video-downloader "PLAYLIST_URL" output.ts
 ```
 
