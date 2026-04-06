@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"^\\\\.$|^\\\\.\\\\.$|\\\\.git\")",
+      "Bash(file:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}
