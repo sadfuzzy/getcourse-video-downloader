@@ -26,9 +26,17 @@ $a0 \"эта_ссылка\" \"Как скачать видео с GetCourse.ts\"
 "
 }
 
-tmpdir="$(umask 077 && mktemp -d)"
+# Use a deterministic tmpdir based on the URL path (without query string) so
+# re-runs with a fresh signed URL for the same video reuse already-downloaded segments
+url_path=$(printf '%s' "${1:-}" | sed 's/?.*//')
+if command -v md5sum >/dev/null 2>&1; then
+    url_hash=$(printf '%s' "$url_path" | md5sum | cut -c1-16)
+else
+    url_hash=$(printf '%s' "$url_path" | md5 | cut -c1-16)
+fi
+tmpdir="/tmp/getcourse_${url_hash}"
+umask 077 && mkdir -p "$tmpdir"
 export TMPDIR="$tmpdir"
-trap 'rm -fr "$tmpdir"' EXIT
 
 # Check for pv
 if ! command -v pv >/dev/null 2>&1; then
@@ -80,12 +88,28 @@ if [ "$total_segments" -eq 0 ]; then
     exit 1
 fi
 
+cached=$(find "$tmpdir" -name "*.ts" -size +0c | wc -l | tr -d ' ')
+if [ "$cached" -gt 0 ]; then
+    echo "Найдено $cached сегментов в кэше ($tmpdir), пропускаю их."
+fi
+
 echo "Скачиваю $total_segments сегментов..."
 grep '^http' "$second_playlist" | parallel --bar --will-cite -j "$PP" \
-    'curl -s --retry 12 -L --output "${TMPDIR}/$(printf "%05d" {#}).ts" {}'
+    'f="${TMPDIR}/$(printf "%05d" {#}).ts"; [ -s "$f" ] || curl -s --retry 12 --retry-all-errors -L --output "$f" {}' || true
 
-echo "Соединяю сегменты..."
+# Check how many segments actually have content
+ok=$(find "$tmpdir" -name "*.ts" -size +0c | wc -l | tr -d ' ')
+if [ "$ok" -eq 0 ]; then
+    echo "Ошибка: ни один сегмент не был скачан. Проверьте сеть или попробуйте снова."
+    exit 1
+fi
+if [ "$ok" -lt "$total_segments" ]; then
+    echo "Предупреждение: скачано $ok из $total_segments сегментов."
+fi
+
+echo "Соединяю $ok сегментов..."
 total_size=$(wc -c "$tmpdir"/*.ts | tail -1 | awk '{print $1}')
 cat "$tmpdir"/*.ts | pv -s "$total_size" > "$result_file"
 echo "Скачивание завершено. Результат:
 $result_file"
+rm -rf "$tmpdir"
